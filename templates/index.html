@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero card">
+  <p class="eyebrow">The unofficial fan hub</p>
+  <h1>Hello everybody,<br>welcome to <em>Gotham</em>.</h1>
+  <p>Submit games for Guess the Elo, battle Gotham's rogues on the board, and get coached, all in one dark city of 64 squares.</p>
+  <p class="row"><a class="btn" href="{{ url_for('guess') }}">Submit a game</a>
+  <a class="btn ghost" href="{{ url_for('play') }}">Play the bot</a></p>
+</section>
+<section class="grid">
+  <article class="card"><h2>GothamChess on Chess.com</h2>
+    {% if rat.rapid or rat.blitz or rat.bullet %}
+    <dl class="stats"><div><dt>Rapid</dt><dd>{{ rat.rapid or '–' }}</dd></div><div><dt>Blitz</dt><dd>{{ rat.blitz or '–' }}</dd></div><div><dt>Bullet</dt><dd>{{ rat.bullet or '–' }}</dd></div></dl>
+    <p class="muted">Live from the Chess.com public API.</p>
+    {% else %}<p class="muted">Live ratings are unavailable right now.</p>{% endif %}
+  </article>
+  <article class="card"><h2>Daily puzzle</h2>
+    {% if puzzle %}<a href="{{ puzzle.url }}" target="_blank" rel="noopener"><img class="pz" src="{{ puzzle.image }}" alt="Chess position for today's puzzle: {{ puzzle.title }}" loading="lazy" width="300" height="300"></a>
+    <p>{{ puzzle.title }}</p>{% else %}<p class="muted">Puzzle unavailable right now.</p>{% endif %}
+  </article>
+  <article class="card"><h2>Explore</h2>
+    <ul class="plain"><li><a href="{{ url_for('coach') }}">Ask the Gotham Coach →</a></li>
+    <li><a href="{{ url_for('connect') }}">All of Levy's channels →</a></li>
+    <li><a href="{{ url_for('guess') }}">How Guess the Elo works →</a></li></ul>
+  </article>
+</section>
+{% endblock %}

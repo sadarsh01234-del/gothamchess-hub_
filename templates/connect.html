@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Connect{% endblock %}
+{% block content %}
+<h1 class="pagetitle">Find GothamChess everywhere</h1>
+<section class="grid">
+  {% for name, desc, url in [
+   ('YouTube','Guess the Elo, openings, and drama.','https://www.youtube.com/@GothamChess'),
+   ('Twitch','Streams and past broadcasts.','https://www.twitch.tv/gothamchess/videos'),
+   ('Chess.com','His profile and games.','https://www.chess.com/member/gothamchess'),
+   ('Instagram','Clips and updates.','https://www.instagram.com/gothamchess?utm_source=ig_web_button_share_sheet&cplk=ZDNlZDc0MzIxNw=='),
+   ('Chessly','His courses website.','https://chessly.com/')] %}
+  <a class="card link" href="{{ url }}" target="_blank" rel="noopener noreferrer">
+    <h2>{{ name }} ↗</h2><p>{{ desc }}</p></a>
+  {% endfor %}
+</section>
+{% endblock %}

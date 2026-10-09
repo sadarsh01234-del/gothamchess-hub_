@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Gotham Coach{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Gotham Coach</h1>
+  <p class="muted">Ask about rules, theory, tactics, endgames or improving.</p>
+  <div id="log" class="log" role="log" aria-live="polite"><p class="bot">Hello everybody! What do you want to learn today?</p></div>
+  <div class="row chips">
+    {% for q in ['What is en passant?','How do I castle?','Opening principles','How to improve?'] %}<button type="button" class="chip">{{ q }}</button>{% endfor %}
+  </div>
+  <form id="cf" class="row"><label class="sr" for="m">Your question</label>
+    <input id="m" autocomplete="off" required placeholder="Ask the coach..."><button class="btn">Send</button></form>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='coach.js') }}"></script>{% endblock %}

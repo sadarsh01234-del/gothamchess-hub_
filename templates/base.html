@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Gotham Chess Hub{% endblock %} · Unofficial GothamChess fan hub</title>
+<meta name="description" content="Fan hub for GothamChess: Guess the Elo, play Gotham bots, chess coach, and links.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="bg">{{ bg_svg }}</div><div class="fx fog" aria-hidden="true"></div><div class="fx rain" aria-hidden="true"></div><div class="fx flash-l" aria-hidden="true"></div>
+<a class="skip" href="#main">Skip to content</a>
+<header><nav aria-label="Main">
+  <a class="brand" href="{{ url_for('home') }}">♞ GOTHAM<span>CHESS</span> HUB</a>
+  <ul>
+    {% set links = [('home','Home'),('guess','Guess the Elo'),('play','Play Gotham Bot'),('coach','Coach'),('connect','Connect')] %}
+    {% for ep, label in links %}<li><a href="{{ url_for(ep) }}" {% if request.endpoint == ep %}aria-current="page"{% endif %}>{{ label }}</a></li>{% endfor %}
+  </ul>
+</nav></header>
+<main id="main">
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, m in msgs %}<p class="flash {{ cat }}" role="status">{{ m }}</p>{% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<footer>
+  <form class="news" method="post" action="{{ url_for('subscribe') }}">
+    <label for="nl">Join the Bat-list (newsletter)</label>
+    <input id="nl" name="email" type="email" placeholder="you@email.com" required>
+    <button class="btn">Subscribe</button>
+  </form>
+  <p>Chess pieces: cburnett set by Colin M.L. Burnett, CC BY-SA 3.0. Unofficial fan project. Not affiliated with Levy Rozman / GothamChess, Chess.com or DC.</p>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

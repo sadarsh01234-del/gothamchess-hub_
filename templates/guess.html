@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Guess the Elo{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Guess the Elo</h1>
+  <p class="lead">You're the GothamSub. Submit your game and Levy might guess your Elo in a future video.</p>
+  <form method="post" novalidate>
+    <label for="submitter">Your username <span class="muted">(optional)</span></label>
+    <input id="submitter" name="submitter" maxlength="60" value="{{ f.get('submitter','') }}">
+    <label for="game_url">Game URL</label>
+    <input id="game_url" name="game_url" type="url" required placeholder="https://www.chess.com/game/live/..." value="{{ f.get('game_url','') }}">
+    <label for="pgn">PGN</label>
+    <textarea id="pgn" name="pgn" rows="8" required placeholder="1. e4 e5 2. Nf3 Nc6 ...">{{ f.get('pgn','') }}</textarea>
+    <fieldset><legend>Which colour did you play? (GothamSub's colour)</legend>
+      <label class="opt"><input type="radio" name="gothamsub_color" value="white" required {% if f.get('gothamsub_color')=='white' %}checked{% endif %}> White</label>
+      <label class="opt"><input type="radio" name="gothamsub_color" value="black" {% if f.get('gothamsub_color')=='black' %}checked{% endif %}> Black</label>
+    </fieldset>
+    <button class="btn">Submit game</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+const p = localStorage.getItem('gotham_pgn'), t = document.getElementById('pgn');
+if (p && !t.value) { t.value = p; localStorage.removeItem('gotham_pgn'); }
+</script>
+{% endblock %}

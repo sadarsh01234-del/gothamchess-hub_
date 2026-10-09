@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<section class="card wide">
+  <h1>Guess the Elo submissions ({{ subs|length }})</h1>
+  <p><a class="btn ghost" href="{{ url_for('export') }}">Download CSV</a></p>
+  <div class="scroll"><table><thead><tr><th>ID</th><th>When (UTC)</th><th>By</th><th>Game</th><th>GothamSub</th><th>PGN</th><th></th></tr></thead><tbody>
+  {% for s in subs %}<tr><td>{{ s.id }}</td><td>{{ s.created_at }}</td><td>{{ s.submitter or '–' }}</td>
+    <td><a href="{{ s.game_url }}" target="_blank" rel="noopener">link</a></td><td>{{ s.gothamsub_color }}</td>
+    <td><details><summary>view</summary><pre>{{ s.pgn }}</pre></details></td>
+    <td><form method="post" action="{{ url_for('admin_delete', sid=s.id) }}"><button class="chip">Delete</button></form></td></tr>
+  {% else %}<tr><td colspan="7">No submissions yet.</td></tr>{% endfor %}</tbody></table></div>
+  <h2>Newsletter subscribers ({{ news|length }})</h2>
+  <ul class="plain">{% for n in news %}<li>{{ n.email }} <span class="muted">{{ n.created_at }}</span></li>{% endfor %}</ul>
+</section>
+{% endblock %}

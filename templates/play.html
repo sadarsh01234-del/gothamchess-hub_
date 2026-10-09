@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Play Gotham Bot{% endblock %}
+{% block content %}
+<section class="playwrap">
+  <div><div id="board" class="board" role="grid" aria-label="Chess board"></div></div>
+  <aside class="card">
+    <h1>Play <span id="botname">the Bot</span></h1>
+    <label for="elo">Bot level: <strong id="elov">1200</strong> Elo (approx.)</label>
+    <input id="elo" type="range" min="400" max="2800" step="100" value="1200">
+    <label for="side">You play</label>
+    <select id="side"><option value="w">White</option><option value="b">Black</option><option value="r">Random</option></select>
+    <p class="row"><button id="new" class="btn">New game</button><button id="undo" class="btn ghost">Undo</button><button id="flip" class="btn ghost">Flip</button></p>
+    <p id="status" role="status" aria-live="polite">Loading engine…</p>
+    <p class="moves" id="moves"></p>
+    <button id="submitpgn" class="btn ghost">Send game to Guess the Elo</button>
+  </aside>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="{{ url_for('static', filename='play.js') }}"></script>
+{% endblock %}
