@@ -1,23 +1,47 @@
-"""GothamChess fan hub (unofficial). Flask + SQLite."""
+"""GothamChess fan hub (unofficial). Flask + SQLite locally, Postgres on Vercel."""
 import csv, hmac, io, json, os, random, re, sqlite3, time, urllib.request
+from pathlib import Path
 from datetime import datetime, timezone
 from functools import wraps
 from flask import (Flask, Response, flash, g, jsonify, redirect,
                    render_template, request, url_for)
 from markupsafe import Markup
 
-app = Flask(__name__)
+ROOT = Path(__file__).resolve().parent.parent
+app = Flask(__name__, static_folder=str(ROOT / "public" / "static"), static_url_path="/static")
 app.secret_key = os.environ.get("SECRET_KEY", "dev-change-me")
-DB = os.environ.get("DB_PATH", "gotham.db")
+ON_VERCEL = bool(os.environ.get("VERCEL"))
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("POSTGRES_URL")
+PG = bool(DATABASE_URL)
+DB = os.environ.get("DB_PATH", "/tmp/gotham.db" if ON_VERCEL else "gotham.db")
 ADMIN_USER = os.environ.get("ADMIN_USER", "admin")
 ADMIN_PASS = os.environ.get("ADMIN_PASSWORD", "gotham")  # CHANGE in production
+if PG:
+    import psycopg2, psycopg2.extras
+    INTEGRITY = psycopg2.IntegrityError
+else:
+    INTEGRITY = sqlite3.IntegrityError
 
-# ---------- database ----------
+# ---------- database (Postgres if DATABASE_URL is set, else SQLite) ----------
 def db():
     if "db" not in g:
-        g.db = sqlite3.connect(DB)
-        g.db.row_factory = sqlite3.Row
+        if PG:
+            g.db = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+        else:
+            g.db = sqlite3.connect(DB)
+            g.db.row_factory = sqlite3.Row
     return g.db
+
+def run(sql, params=(), commit=False):
+    conn = db()
+    if PG:
+        cur = conn.cursor()
+        cur.execute(sql.replace("?", "%s"), params)
+    else:
+        cur = conn.execute(sql, params)
+    if commit:
+        conn.commit()
+    return cur
 
 @app.teardown_appcontext
 def close_db(_):
@@ -25,15 +49,23 @@ def close_db(_):
     if d:
         d.close()
 
-with sqlite3.connect(DB) as c:
-    c.executescript("""
-    CREATE TABLE IF NOT EXISTS submissions(
-      id INTEGER PRIMARY KEY AUTOINCREMENT, game_url TEXT NOT NULL, pgn TEXT NOT NULL,
-      gothamsub_color TEXT NOT NULL CHECK(gothamsub_color IN ('white','black')),
-      submitter TEXT, created_at TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS subscribers(
-      id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL);""")
+def init_db():
+    pk = "SERIAL PRIMARY KEY" if PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
+    stmts = [
+        f"""CREATE TABLE IF NOT EXISTS submissions(
+          id {pk}, game_url TEXT NOT NULL, pgn TEXT NOT NULL,
+          gothamsub_color TEXT NOT NULL CHECK(gothamsub_color IN ('white','black')),
+          submitter TEXT, created_at TEXT NOT NULL)""",
+        f"""CREATE TABLE IF NOT EXISTS subscribers(
+          id {pk}, email TEXT UNIQUE NOT NULL, created_at TEXT NOT NULL)"""]
+    conn = psycopg2.connect(DATABASE_URL) if PG else sqlite3.connect(DB)
+    cur = conn.cursor()
+    for s in stmts:
+        cur.execute(s)
+    conn.commit()
+    conn.close()
 
+init_db()
 now = lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 # ---------- admin (HTTP basic auth) ----------
@@ -138,9 +170,8 @@ def guess():
         if err:
             flash(err, "error")
             return render_template("guess.html", f=request.form), 400
-        db().execute("INSERT INTO submissions(game_url,pgn,gothamsub_color,submitter,created_at) VALUES(?,?,?,?,?)",
-                     (url, pgn, col, who, now()))
-        db().commit()
+        run("INSERT INTO submissions(game_url,pgn,gothamsub_color,submitter,created_at) VALUES(?,?,?,?,?)",
+            (url, pgn, col, who, now()), commit=True)
         flash("Game received! Levy may feature it in a Guess the Elo video.", "ok")
         return redirect(url_for("guess"))
     return render_template("guess.html", f={})
@@ -150,10 +181,9 @@ def subscribe():
     email = request.form.get("email", "").strip().lower()
     if re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email) and len(email) < 255:
         try:
-            db().execute("INSERT INTO subscribers(email,created_at) VALUES(?,?)", (email, now()))
-            db().commit()
-        except sqlite3.IntegrityError:
-            pass
+            run("INSERT INTO subscribers(email,created_at) VALUES(?,?)", (email, now()), commit=True)
+        except INTEGRITY:
+            db().rollback()
         flash("You're on the Bat-list! Thanks for subscribing.", "ok")
     else:
         flash("Please enter a valid email.", "error")
@@ -163,15 +193,14 @@ def subscribe():
 @app.route("/admin")
 @admin_only
 def admin():
-    subs = db().execute("SELECT * FROM submissions ORDER BY id DESC").fetchall()
-    news = db().execute("SELECT * FROM subscribers ORDER BY id DESC").fetchall()
-    return render_template("admin.html", subs=subs, news=news)
+    subs = run("SELECT * FROM submissions ORDER BY id DESC").fetchall()
+    news = run("SELECT * FROM subscribers ORDER BY id DESC").fetchall()
+    return render_template("admin.html", subs=subs, news=news, temp_db=ON_VERCEL and not PG)
 
 @app.post("/admin/delete/<int:sid>")
 @admin_only
 def admin_delete(sid):
-    db().execute("DELETE FROM submissions WHERE id=?", (sid,))
-    db().commit()
+    run("DELETE FROM submissions WHERE id=?", (sid,), commit=True)
     return redirect(url_for("admin"))
 
 @app.route("/admin/export.csv")
@@ -180,7 +209,7 @@ def export():
     out = io.StringIO()
     w = csv.writer(out)
     w.writerow(["id", "game_url", "gothamsub_color", "submitter", "created_at", "pgn"])
-    for r in db().execute("SELECT * FROM submissions ORDER BY id"):
+    for r in run("SELECT * FROM submissions ORDER BY id").fetchall():
         w.writerow([r["id"], r["game_url"], r["gothamsub_color"], r["submitter"], r["created_at"], r["pgn"]])
     return Response(out.getvalue(), mimetype="text/csv",
                     headers={"Content-Disposition": "attachment; filename=guess_the_elo.csv"})

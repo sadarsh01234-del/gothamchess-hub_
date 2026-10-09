@@ -2,6 +2,7 @@
 {% block title %}Admin{% endblock %}
 {% block content %}
 <section class="card wide">
+  {% if temp_db %}<p class="flash error">Temporary storage: set DATABASE_URL (Postgres) or submissions will be lost.</p>{% endif %}
   <h1>Guess the Elo submissions ({{ subs|length }})</h1>
   <p><a class="btn ghost" href="{{ url_for('export') }}">Download CSV</a></p>
   <div class="scroll"><table><thead><tr><th>ID</th><th>When (UTC)</th><th>By</th><th>Game</th><th>GothamSub</th><th>PGN</th><th></th></tr></thead><tbody>

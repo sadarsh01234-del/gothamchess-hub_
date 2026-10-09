@@ -25,7 +25,7 @@ The footer on every page has a newsletter signup.
 - **Frontend:** Jinja templates, plain CSS and JavaScript
 - **Chess:** [chess.js](https://github.com/jhlywa/chess.js) for rules, [stockfish.js](https://github.com/nmrugg/stockfish.js) as the bot engine (loaded in the browser)
 - **Data:** Chess.com public API (ratings and daily puzzle, cached)
-- **Hosting:** Render with Gunicorn
+- **Hosting:** Vercel (serverless) with Postgres, or Render with Gunicorn
 
 ## Run locally
 
@@ -40,7 +40,7 @@ python -m venv venv
 # Mac/Linux:  source venv/bin/activate
 
 pip install -r requirements.txt
-python app.py
+python src/app.py
 ```
 
 Open http://127.0.0.1:5000. The play page needs an internet connection to load the chess libraries.
@@ -54,7 +54,8 @@ Set these as environment variables (never commit them):
 | `ADMIN_USER` | `admin` | Admin login username |
 | `ADMIN_PASSWORD` | `gotham` | Admin login password. **Change this in production** |
 | `SECRET_KEY` | `dev-change-me` | Flask session key. **Change this in production** |
-| `DB_PATH` | `gotham.db` | Location of the SQLite file |
+| `DATABASE_URL` | empty | Postgres connection string. If set, Postgres is used instead of SQLite (required on Vercel) |
+| `DB_PATH` | `gotham.db` | Location of the SQLite file (local use) |
 
 ## Admin backend
 
@@ -62,24 +63,30 @@ Go to `/admin` and sign in. You can view every Guess the Elo submission and news
 
 Submissions are stored in the `submissions` table: `id`, `game_url`, `pgn`, `gothamsub_color`, `submitter`, `created_at`.
 
-## Deploy on Render
+## Deploy on Vercel
+
+Vercel's filesystem is temporary, so submissions need an external Postgres database.
 
 1. Push this repo to GitHub.
-2. On [render.com](https://render.com), create a **New Web Service** from the repo.
-3. Build command: `pip install -r requirements.txt`
-4. Start command: `gunicorn app:app`
-5. Add the environment variables above.
+2. On [vercel.com](https://vercel.com), click **Add New, Project** and import the repo. Leave the framework preset as detected (Flask) and deploy.
+3. In the project, open **Storage** and create a **Neon Postgres** database from the Marketplace. Connect it to the project so `DATABASE_URL` is added automatically.
+4. Under **Settings, Environment Variables**, add `ADMIN_PASSWORD` and `SECRET_KEY` (and optionally `ADMIN_USER`).
+5. **Redeploy** so the variables take effect. Tables are created automatically on first load.
 
-**Note:** On Render's free plan the SQLite file is erased on each redeploy, and the app sleeps after about 15 minutes of inactivity. Download the CSV regularly, or attach a persistent disk and set `DB_PATH=/var/data/gotham.db`.
+## Deploy on Render (alternative)
+
+Build command `pip install -r requirements.txt`, start command `gunicorn src.app:app`. On the free plan SQLite is erased on redeploy, so set `DATABASE_URL` to a Postgres database to keep data.
 
 ## Project structure
 
 ```
-app.py              Flask app, routes, database, coach knowledge base
+src/app.py          Flask app, routes, database, coach knowledge base
+src/templates/      Jinja HTML templates
+public/static/      CSS, JavaScript, chess piece SVGs (served by Vercel's CDN)
 requirements.txt    Python dependencies
-Procfile            Gunicorn start command
-templates/          Jinja HTML templates
-static/             CSS, JavaScript, chess piece SVGs
+vercel.json         Vercel config
+Procfile            Gunicorn start command (Render)
+.env.example        Environment variable template
 ```
 
 ## Notes
